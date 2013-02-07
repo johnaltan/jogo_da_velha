@@ -1,791 +1,125 @@
-#include<stdio.h> 
-#include<stdlib.h> 
-#include<conio.h> 
+#include <stdio.h>
+#include <stdlib.h>
+#include "messenger.h"
 
-//Variaveis do tipo caracter
-char vel[][4] = { {' ',' ',' '},{' ',' ',' '}, {' ',' ',' '} };
-//Variaveis do tipo inteiro
-int random10,j1, j2, you=0, pc=0, k, z, imprime(void), lerp(void), troca(int s, int t), xwin(void), owin(void), jogapc(void), resetar(void); 
+struct messenger messenger;
 
-//Essa é a função que imprime a tela do jogo.
-int imprime() 
-{ 
-printf("\n                      IAPEC - FACULDADE DE TECNOLOGIA");
-printf("\n              CURSO SUPERIOR TECNOLOGICO EM REDES DE COMPUTADORES");
-printf("\n        TRABALHO APRESENTADO A DISCIPLICA DE LINGUAGEM DE PROGRAMACAO - C");
-printf("\n              ALUNOS: ALEX DA SILVA FERNANDES E EMMERSON LOYDE\n\n\n");
-printf(" Voce: %d x Computador: %d \n\n", you, pc); //Estatisticas do jogo.
-printf("    Y1  Y2  Y3\n\n"); //Escreve y1 y2 y3 e pula duas linhas
+char set;
 
-//For para escrever as linhas e os x1 x2 e x3 ordenadamente
-for(z=0; z<3; z++) { //z recebe 0; enquanto z menor que 3; z recebe z+1
-  if(z==0) printf("X1"); //se z igual a o escrever x1
-  if(z==1) printf("X2"); //se z igual a 1 escrever x2
-  if(z==2) printf("X3"); //se z igual a 2 escrever x3
-  for(k=0; k<3; k++) { //k recebe 0; enquanto k menor que 3; k recebe k+1
-      if(k==0) printf("  %c ", vel[z][k]); //se k igual a 0 escrever posição da matriz vel
-      else printf(" %c ", vel[z][k]); //senão escrever posição da matriz vel
-      if(k<2) printf("|"); //se k menor que 2 escrever uma barra vertical
-      } 
-  if(z<2) printf("\n    -----------\n"); //se z menor que 2 escrever pula uma linha ----- pula outra linha
-  } 
-  printf("\n\n"); //escrever pula duas linhas
-} 
+int linha=0,coluna=0,win,casa[3][3];
 
-
-//Função que verifica se o campo já está preenchido com x ou o
-int troca(int s, int t) { 
-
-// printf("\n %i  %i  ", s, t); //simplesmente para debug
-
-if(vel[s-49][t-49]=='x' || vel[s-49][t-49]=='o') //se posição da matriz vel for x ou o
-{ 
-  printf("\n\nEspaco ja preenchido\n"); //escreve Espaço já preenchido
-  lerp(); //chama a função lerp
-} 
-if(vel[s-49][t-49]==' ') vel[s-49][t-49]='x'; //se posição da matriz vel estiver limpa, recebe x
-} 
-
-int lerp() {  
-
-int i,j;
-
-printf("\nDigite as coordenadas de sua jogada:\n\nX:"); 
-
-i=getche(); 
-
-printf("\nY:"); 
-j=getche(); 
-
-if(i>=49 && i<52 && j>=49 && j<52) troca(i,j); 
-else { 
-      printf("\n\nERRO!\n\nCoordenada invalida.\n\n"); 
-      lerp(); 
-      } 
-
-} 
-
-
-int xwin() {
-          printf("\nVoce GANHOU!\n");
-          you++; 
-          resetar(); 
-} 
-
-
-int owin() { 
-printf("\nVoce PERDEU!\n"); 
-pc++; 
-resetar(); 
-} 
-
-
-//PC joga
-int jogapc() { 
-
-int x=1; //PC gasta sua jogada.
- 
-      if(vel[2][2]=='x' && vel[0][2]=='x') 
-        if(vel[1][2]==' ' && x) 
-        { 
-            vel[1][2]='o'; 
-            x=0; 
-        } 
-
-      if(vel[2][0]=='x' && vel[0][2]=='x') 
-        if(vel[1][0]==' ' && x) 
-        { 
-            vel[1][0]='o'; 
-            x=0; 
-        }  
-
-  /*ATAQUES*/ 
-
-      /* ataques => diagonal secundária */ 
-
-      if(vel[2][0]=='o' && vel[1][1]=='o') 
-        if(vel[0][2]==' ' && x) 
-        { 
-            vel[0][2]='o'; 
-            x=0; 
-        } 
-      if(vel[0][2]=='o' && vel[2][2]=='o') 
-        if(vel[2][0]==' ' && x) 
-        { 
-            vel[2][0]='o'; 
-            x=0; 
-        } 
-      if(vel[2][0]=='o' && vel[0][2]=='o') 
-        if(vel[1][1]==' ' && x) 
-        { 
-            vel[1][1]='o'; 
-            x=0; 
-        } 
-
-      /* ataques => diagonal principal */ 
-
-      if(vel[0][0]=='o' && vel[1][1]=='o') 
-        if(vel[2][2]==' ' && x) 
-        { 
-            vel[2][2]='o'; 
-            x=0; 
-        } 
-      if(vel[1][1]=='o' && vel[2][2]=='o') 
-        if(vel[0][0]==' ' && x) 
-        { 
-            vel[0][0]='o'; 
-            x=0; 
-        } 
-      if(vel[0][0]=='o' && vel[2][2]=='o') 
-        if(vel[1][1]==' ' && x) 
-        { 
-            vel[1][1]='o'; 
-            x=0; 
-        } 
-
-      /* ataques => coluna 1: */ 
-
-      if(vel[0][0]=='o' && vel[1][0]=='o') 
-        if(vel[2][0]==' ' && x) 
-        { 
-            vel[2][0]='o'; 
-            x=0; 
-        } 
-      if(vel[1][0]=='o' && vel[2][0]=='o') 
-        if(vel[0][0]==' ' && x) 
-        { 
-            vel[0][0]='o'; 
-            x=0; 
-        } 
-      if(vel[0][0]=='o' && vel[2][0]=='o') 
-        if(vel[1][0]==' ' && x) 
-        { 
-            vel[1][0]='o'; 
-            x=0; 
-        } 
-
-      /* ataques => coluna 2: */ 
-
-      if(vel[0][1]=='o' && vel[1][1]=='o') 
-        if(vel[2][1]==' ' && x) 
-        { 
-            vel[2][1]='o'; 
-            x=0; 
-        } 
-      if(vel[1][1]=='o' && vel[2][1]=='o') 
-        if(vel[0][1]==' ' && x) 
-        { 
-            vel[0][1]='o'; 
-            x=0; 
-        } 
-      if(vel[0][1]=='o' && vel[2][1]=='o') 
-        if(vel[1][1]==' ' && x) 
-        { 
-            vel[1][1]='o'; 
-            x=0; 
-        } 
-
-      /* ataques => coluna 3: */ 
-
-      if(vel[0][2]=='o' && vel[1][2]=='o') 
-        if(vel[2][2]==' ' && x) 
-        { 
-            vel[2][2]='o'; 
-            x=0; 
-        } 
-      if(vel[1][2]=='o' && vel[2][2]=='o') 
-        if(vel[0][2]==' ' && x) 
-        { 
-            vel[0][2]='o'; 
-            x=0; 
-        } 
-      if(vel[0][2]=='o' && vel[2][2]=='o') 
-        if(vel[1][2]==' ' && x) 
-        { 
-            vel[1][2]='o'; 
-            x=0; 
-        } 
-
-      /* ataques => linha 1: */ 
-
-      if(vel[0][0]=='o' && vel[0][1]=='o') 
-        if(vel[0][2]==' ' && x) 
-        { 
-            vel[0][2]='o'; 
-            x=0; 
-        } 
-      if(vel[0][1]=='o' && vel[0][2]=='o') 
-        if(vel[0][0]==' ' && x) 
-        { 
-            vel[0][0]='o'; 
-            x=0; 
-        } 
-      if(vel[0][0]=='o' && vel[0][2]=='o') 
-        if(vel[0][1]==' ' && x) 
-        { 
-            vel[0][1]='o'; 
-            x=0; 
-        } 
-
-      /* ataques => linha 2: */ 
-
-      if(vel[1][0]=='o' && vel[1][1]=='o') 
-        if(vel[1][2]==' ' && x) 
-        { 
-            vel[1][2]='o'; 
-            x=0; 
-        } 
-      if(vel[1][1]=='o' && vel[1][2]=='o') 
-        if(vel[1][0]==' ' && x) 
-        { 
-            vel[1][0]='o'; 
-            x=0; 
-        } 
-      if(vel[1][0]=='o' && vel[1][2]=='o') 
-        if(vel[1][1]==' ' && x) 
-        { 
-            vel[1][1]='o'; 
-            x=0; 
-        } 
-
-      /* ataues => linha 3: */ 
-
-      if(vel[2][0]=='o' && vel[2][1]=='o') 
-        if(vel[2][2]==' ' && x) 
-        { 
-            vel[2][2]='o'; 
-            x=0; 
-        } 
-      if(vel[2][1]=='o' && vel[2][2]=='o') 
-        if(vel[2][0]==' ' && x) 
-        { 
-            vel[2][0]='o'; 
-            x=0; 
-        } 
-      if(vel[2][0]=='o' && vel[2][2]=='o') 
-        if(vel[2][1]==' ' && x) 
-        { 
-            vel[2][1]='o'; 
-            x=0; 
-        } 
-
-/* JOGADA 1 */ 
-
-if(j1 && x) 
-{ 
-if(vel[0][0]=='x') 
-  { 
-      vel[1][1]='o'; 
-      x=0; 
-      j1=0; 
-  } 
-if(vel[1][1]=='x') 
-  { 
-      vel[2][0]='o'; 
-      x=0; 
-      j1=0; 
-  } 
-if(vel[2][2]=='x') 
-  { 
-      vel[1][1]='o'; 
-      x=0; 
-      j1=0; 
-  } 
-if(vel[0][1]=='x') 
-  { 
-      vel[1][1]='o'; 
-      x=0; 
-      j1=0; 
-  } 
-if(vel[0][2]=='x') 
-  { 
-      vel[1][1]='o'; 
-      x=0; 
-      j1=0; 
-  } 
-if(vel[1][0]=='x') 
-  { 
-      vel[1][1]='o'; 
-      x=0; 
-      j1=0; 
-  } 
-if(vel[1][2]=='x') 
-  { 
-      vel[1][1]='o'; 
-      x=0; 
-      j1=0; 
-  } 
-if(vel[2][0]=='x') 
-  { 
-      vel[1][1]='o'; 
-      x=0; 
-      j1=0; 
-  } 
-if(vel[2][1]=='x') 
-  { 
-      vel[1][1]='o'; 
-      x=0; 
-      j1=0; 
-  } 
-} 
-
-      /* DEFESAS */ 
-
-      /* defesas => diagonal secundária */ 
-
-      if(vel[2][0]=='x' && vel[1][1]=='x') 
-        if(vel[0][2]==' ' && x) 
-        { 
-            vel[0][2]='o'; 
-            x=0; 
-        } 
-      if(vel[0][2]=='x' && vel[2][2]=='x') 
-        if(vel[2][0]==' ' && x) 
-        { 
-            vel[2][0]='o'; 
-            x=0; 
-        } 
-      if(vel[2][0]=='x' && vel[0][2]=='x') 
-        if(vel[1][1]==' ' && x) 
-        { 
-            vel[1][1]='o'; 
-            x=0; 
-        } 
-
-      /* defesas => diagonal principal */ 
-
-      if(vel[0][0]=='x' && vel[1][1]=='x') 
-        if(vel[2][2]==' ' && x) 
-        { 
-            vel[2][2]='o'; 
-            x=0; 
-        } 
-      if(vel[1][1]=='x' && vel[2][2]=='x') 
-        if(vel[0][0]==' ' && x) 
-        { 
-            vel[0][0]='o'; 
-            x=0; 
-        } 
-      if(vel[0][0]=='x' && vel[2][2]=='x') 
-        if(vel[1][1]==' ' && x) 
-        { 
-            vel[1][1]='o'; 
-            x=0; 
-        } 
-
-      /* defesas => coluna 1: */ 
-
-      if(vel[0][0]=='x' && vel[1][0]=='x') 
-        if(vel[2][0]==' ' && x) 
-        { 
-            vel[2][0]='o'; 
-            x=0; 
-        } 
-      if(vel[1][0]=='x' && vel[2][0]=='x') 
-        if(vel[0][0]==' ' && x) 
-        { 
-            vel[0][0]='o'; 
-            x=0; 
-        } 
-      if(vel[0][0]=='x' && vel[2][0]=='x') 
-        if(vel[1][0]==' ' && x) 
-        { 
-            vel[1][0]='o'; 
-            x=0; 
-        } 
-
-      /* defesas => coluna 2: */ 
-
-      if(vel[0][1]=='x' && vel[1][1]=='x') 
-        if(vel[2][1]==' ' && x) 
-        { 
-            vel[2][1]='o'; 
-            x=0; 
-        } 
-      if(vel[1][1]=='x' && vel[2][1]=='x') 
-        if(vel[0][1]==' ' && x) 
-        { 
-            vel[0][1]='o'; 
-            x=0; 
-        } 
-      if(vel[0][1]=='x' && vel[2][1]=='x') 
-        if(vel[1][1]==' ' && x) 
-        { 
-            vel[1][1]='o'; 
-            x=0; 
-        } 
-
-      /* defesas => coluna 3: */ 
-
-      if(vel[0][2]=='x' && vel[1][2]=='x') 
-        if(vel[2][2]==' ' && x) 
-        { 
-            vel[2][2]='o'; 
-            x=0; 
-        } 
-      if(vel[1][2]=='x' && vel[2][2]=='x') 
-        if(vel[0][2]==' ' && x) 
-        { 
-            vel[0][2]='o'; 
-            x=0; 
-        } 
-      if(vel[0][2]=='x' && vel[2][2]=='x') 
-        if(vel[1][2]==' ' && x) 
-        { 
-            vel[1][2]='o'; 
-            x=0; 
-        } 
-
-      /* defesas => linha 1: */ 
-
-      if(vel[0][0]=='x' && vel[0][1]=='x') 
-        if(vel[0][2]==' ' && x) 
-        { 
-            vel[0][2]='o'; 
-            x=0; 
-        } 
-      if(vel[0][1]=='x' && vel[0][2]=='x') 
-        if(vel[0][0]==' ' && x) 
-        { 
-            vel[0][0]='o'; 
-            x=0; 
-        } 
-      if(vel[0][0]=='x' && vel[0][2]=='x') 
-        if(vel[0][1]==' ' && x) 
-        { 
-            vel[0][1]='o'; 
-            x=0; 
-        } 
-
-      /* defesas => linha 2: */ 
-
-      if(vel[1][0]=='x' && vel[1][1]=='x') 
-        if(vel[1][2]==' ' && x) 
-        { 
-            vel[1][2]='o'; 
-            x=0; 
-        } 
-      if(vel[1][1]=='x' && vel[1][2]=='x') 
-        if(vel[1][0]==' ' && x) 
-        { 
-            vel[1][0]='o'; 
-            x=0; 
-        } 
-      if(vel[1][0]=='x' && vel[1][2]=='x') 
-        if(vel[1][1]==' ' && x) 
-        { 
-            vel[1][1]='o'; 
-            x=0; 
-        } 
-
-      /* defesas => linha 3: */ 
-
-      if(vel[2][0]=='x' && vel[2][1]=='x') 
-        if(vel[2][2]==' ' && x) 
-        { 
-            vel[2][2]='o'; 
-            x=0; 
-        } 
-      if(vel[2][1]=='x' && vel[2][2]=='x') 
-        if(vel[2][0]==' ' && x) 
-        { 
-            vel[2][0]='o'; 
-            x=0; 
-        } 
-      if(vel[2][0]=='x' && vel[2][2]=='x') 
-        if(vel[2][1]==' ' && x) 
-        { 
-            vel[2][1]='o'; 
-            x=0; 
-        } 
-
-  /* JOGADA 2 */ 
-
-if(vel[0][0]=='x' && vel[1][1]=='x' && vel[2][2]=='o') 
-{ 
-  if(x) 
-  { 
-      if(vel[2][0]==' ') 
-      { 
-        vel[2][0]='o'; 
-        x=0; 
-      } 
-      else 
-      { 
-        if(vel[0][2]==' ') 
-        { 
-            vel[0][2]='o'; 
-            x=0; 
-        } 
-      } 
-  } 
-} 
-
-if(vel[0][0]=='x' && vel[2][1]=='x') 
-{ 
-  if(x && j2) 
-  { 
-      if(vel[2][0]==' ') 
-      { 
-        vel[2][0]='o'; 
-        x=0; 
-        j2=0; 
-      } 
-      else 
-      { 
-        if(vel[1][0]==' ') 
-        { 
-            vel[1][0]='o'; 
-            x=0; 
-            j2=0; 
-        } 
-      } 
-  } 
-} 
-
-if(vel[0][0]=='x' && vel[1][2]=='x') 
-{ 
-  if(x && j2) 
-  { 
-      if(vel[0][2]==' ') 
-      { 
-        vel[0][2]='o'; 
-        x=0; 
-        j2=0; 
-      } 
-      else 
-      { 
-        if(vel[0][1]==' ') 
-        { 
-            vel[0][1]='o'; 
-            x=0; 
-            j2=0; 
-        } 
-      } 
-  } 
-} 
-
-if(vel[0][1]=='x' && vel[1][0]=='x') 
-{ 
-  if(x && j2) 
-  { 
-      if(vel[0][0]==' ') 
-      { 
-        vel[0][0]='o'; 
-        x=0; 
-        j2=0; 
-      } 
-      else 
-      { 
-        if(vel[1][1]==' ') 
-        { 
-            vel[1][1]='o'; 
-            x=0; 
-            j2=0; 
-        } 
-      } 
-  } 
-} 
-
-if(vel[0][1]=='x' && vel[2][0]=='x') 
-{ 
-  if(x && j2) 
-  { 
-      if(vel[1][1]==' ') 
-      { 
-        vel[1][1]='o'; 
-        x=0; 
-        j2=0; 
-      } 
-      else 
-      { 
-        if(vel[0][0]==' ') 
-        { 
-            vel[0][0]='o'; 
-            x=0; 
-            j2=0; 
-        } 
-      } 
-  } 
-} 
-
-if(vel[0][1]=='x' && vel[1][2]=='x') 
-{ 
-  if(x && j2) 
-  { 
-      if(vel[0][2]==' ') 
-      { 
-        vel[0][2]='o'; 
-        x=0; 
-        j2=0; 
-      } 
-      else 
-      { 
-        if(vel[1][1]==' ') 
-        { 
-            vel[1][1]='o'; 
-            x=0; 
-            j2=0; 
-        } 
-      } 
-  } 
-} 
-
-if(vel[0][1]=='x' && vel[2][2]=='x') 
-{ 
-  if(x && j2) 
-  { 
-      if(vel[0][2]==' ') 
-      { 
-        vel[0][2]='o'; 
-        x=0; 
-        j2=0; 
-      } 
-      else 
-      { 
-        if(vel[0][0]==' ') 
-        { 
-            vel[0][0]='o'; 
-            x=0; 
-            j2=0; 
-        } 
-      } 
-  } 
-} 
-
-if(vel[0][2]=='x' && vel[1][0]=='x') 
-{ 
-  if(x && j2) 
-  { 
-      if(vel[0][0]==' ') 
-      { 
-        vel[0][0]='o'; 
-        x=0; 
-        j2=0; 
-      } 
-      else 
-      { 
-        if(vel[1][1]==' ') 
-        { 
-            vel[1][1]='o'; 
-            x=0; 
-            j2=0; 
-        } 
-      } 
-  } 
-} 
-
-if(vel[0][2]=='x' && vel[2][1]=='x') 
-{ 
-  if(x && j2) 
-  { 
-      if(vel[2][2]==' ') 
-      { 
-        vel[2][2]='o'; 
-        x=0; 
-        j2=0; 
-      } 
-      else 
-      { 
-        if(vel[1][1]==' ') 
-        { 
-            vel[1][1]='o'; 
-            x=0; 
-            j2=0; 
-        } 
-      } 
-  } 
-} 
-
-if(x) 
-{ 
-  int d=0; 
-  int f=0; 
-
-  for(d=0; d<3; d++) 
-  { 
-      for(f=0; f<3; f++) 
-      { 
-        if(vel[d][f]==' ') 
-            { 
-            vel[d][f]='o'; 
-            x=0; 
-            } 
-        if(x==0) break; 
-      } 
-  if(x==0) break; 
-  } 
-
-  if(x) 
-  { 
-      printf("\nEMPATE.\n"); 
-      resetar(); 
-  }
-} 
-} 
-
-int resetar() 
-{ 
-  int d, f; 
-  for(d=0; d<3; d++) 
-      { 
-      for(f=0; f<3; f++) 
-        { 
-            vel[d][f]=' '; 
-        } 
-      }
-  j1=1; 
-  j2=1;
-  getche();  
-  system("CLS");  
-  imprime();
-
-      
-} 
-
-int main() { 
-
-int t; 
-
-imprime(); 
-
-j1=1; 
-j2=1; 
-
-do{ 
-
-lerp(); 
-
-system("CLS"); 
-imprime(); 
-for(t=0; t<99000000; t++) ; 
-jogapc();
-system("CLS"); 
-imprime();
-
-if(vel[0][0]=='x' && vel[0][1]=='x' && vel[0][2]=='x' || 
-vel[1][0]=='x' && vel[1][1]=='x' && vel[1][2]=='x' || 
-vel[2][0]=='x' && vel[2][1]=='x' && vel[2][2]=='x' || 
-
-vel[0][0]=='x' && vel[1][0]=='x' && vel[2][0]=='x' || 
-vel[0][1]=='x' && vel[1][1]=='x' && vel[2][1]=='x' || 
-vel[0][2]=='x' && vel[1][2]=='x' && vel[2][2]=='x' || 
-
-vel[0][0]=='x' && vel[1][1]=='x' && vel[2][2]=='x' || 
-vel[2][0]=='x' && vel[1][1]=='x' && vel[0][2]=='x') xwin(); 
-
-if(vel[0][0]=='o' && vel[0][1]=='o' && vel[0][2]=='o' || 
-vel[1][0]=='o' && vel[1][1]=='o' && vel[1][2]=='o' || 
-vel[2][0]=='o' && vel[2][1]=='o' && vel[2][2]=='o' || 
-
-vel[0][0]=='o' && vel[1][0]=='o' && vel[2][0]=='o' || 
-vel[0][1]=='o' && vel[1][1]=='o' && vel[2][1]=='o' || 
-vel[0][2]=='o' && vel[1][2]=='o' && vel[2][2]=='o' || 
-
-vel[0][0]=='o' && vel[1][1]=='o' && vel[2][2]=='o' || 
-vel[2][0]=='o' && vel[1][1]=='o' && vel[0][2]=='o') owin(); 
+void game_draw(int x, int y) {
+  if (casa[x][y] == '{FONTE}') printf(" ");
+  if (casa[x][y] == 1) printf("X");
+  if (casa[x][y] == 2) printf("O");
 }
 
-while(1);
+void game_limpa() {
+  printf("\e[H\e[2J");
+}
 
+void game_jogo() {
+  printf("  1   2   3\n");
+  printf("1 ");
+  game_draw(0,0);
+  printf(" | ");
+  game_draw(0,1);
+  printf(" | ");
+  game_draw(0,2);
+  printf("\n ---+---+---\n2 ");
+  game_draw(1,0);
+  printf(" | ");
+  game_draw(1,1);
+  printf(" | ");
+  game_draw(1,2);
+  printf("\n ---+---+---\n3 ");
+  game_draw(2,0);
+  printf(" | ");
+  game_draw(2,1);
+  printf(" | ");
+  game_draw(2,2);
+  messenger_update(&messenger,casa,sizeof(casa));
+}
+
+void game_check() {
+  int i=0;
+  for (i=0;i<3;i++) { /* Horizontal */
+    if (casa[i][0] == casa[i][1] && casa[i][0] == casa[i][2]) {
+      if (casa[i][0] == 1) win=1;
+      if (casa[i][0] == 2) win=2;
+    }
+  }
+  for (i=0;i<3;i++) { /* Vertical */
+    if (casa[0][i] == casa[1][i] && casa[0][i] == casa[2][i]) {
+      if (casa[0][i] == 1) win=1;
+      if (casa[0][i] == 2) win=2;
+    }
+  }
+  if (casa[0][0] == casa[1][1] && casa[0][0] == casa[2][2]) { /* Diagonal Cima->Baixo*/
+    if (casa[0][0] == 1) win=1;
+    if (casa[0][0] == 2) win=2;
+  }
+  if (casa[0][2] == casa[1][1] && casa[0][2] == casa[2][0]) { /* Diagonal Baixo->Cima */
+    if (casa[0][2] == 1) win=1;
+    if (casa[0][2] == 2) win=2;
+  }
+}
+
+void game_play(int player) {
+  int i=0;
+  if (player==1) set=1;
+  if (player==2) set=2;
+  play:
+  while (i==0) {
+    linha=0;
+    coluna=0;
+    while (linha<1 || linha>3) {
+      printf("\nJogador %d. Escolha a Linha (1,2,3): ",set);
+      scanf("%d",&linha);
+      getchar();
+    }
+    while (coluna<1 || coluna>3) {
+      printf("\nJogador %d. Escolha a Coluna (1,2,3): ",set);
+      scanf("%d",&coluna);
+      getchar();
+    }
+    linha--;
+    coluna--;
+    if (casa[linha][coluna] != 1 && casa[linha][coluna] != 2) {
+      casa[linha][coluna]=set;
+      i=1;
+    }
+    else {
+      printf("A casa está em uso! Jogue Novamente..\n");
+      sleep(2);
+      game_limpa();
+      game_jogo();
+    }
+  }
+}
+
+char game_divi(int a, int b) {
+  return (!(a%b));
+}
+
+void main(int argc, char **argv) {
+  int i=0;
+  messenger.desejo = MASTER;
+  if(argv[1]){
+    messenger.desejo = SLAVE;
+    strcpy(messenger.hostporta,argv[1]);
+  }
+  messenger_init(&messenger);
+  for (i=0;i<9;i++) {
+    game_limpa();
+    game_jogo();
+    if(!game_divi(i,2)) game_play(2);
+    else game_play(1);
+    game_check();
+    if (win == 1 || win == 2) i=10;
+  }
+  game_limpa();
+  game_jogo();
+  if (win == 1 || win == 2) printf("\nJogador %d venceu o jogo!\n",win);
+  else printf("\nEmpate!\n");
 }
