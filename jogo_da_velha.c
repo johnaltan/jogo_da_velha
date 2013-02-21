@@ -69,7 +69,6 @@ void game_play(int player) {
   int i=0;
   if (player==1) set=1;
   if (player==2) set=2;
-  play:
   while (i==0) {
     linha=0;
     coluna=0;
