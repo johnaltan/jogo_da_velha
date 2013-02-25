@@ -21,7 +21,7 @@
 #define SERVER 1
 #define CLIENT 0
 
-uv_tcp_t server, tcp_out;
+uv_tcp_t *server = NULL, *tcp_out = NULL;
 uv_timer_t tmr_atualiza;
 uv_timer_t tmr_conexoes;
 char server_host[17];
@@ -29,7 +29,7 @@ uv_loop_t *uv_loop = NULL;
 int mode = SERVER;
 uv_pipe_t stdin_pipe;
 int porta_local = 8000;
-char server_conectado = 0;
+char tcp_conectado = 0;
 
 char win,casa[3][3], casa_ant[3][3],i, waitn_user;
 
@@ -115,8 +115,10 @@ void game_check(void) {
 
 int game_play(char *string){
   char linha, coluna;
-  if(strlen(string) != 4)
+  if((strlen(string) != 4) || (string[0] <= '0') || (string[2] <= '0') || (string[0] >= '4')|| (string[2] >= '4')){
+    fprintf(stderr,"Entrada nao reconhecida (use linha coluna)\n");
     return 2;
+  }
   linha = string[0] - '1';
   coluna = string[2] - '1';
   if (casa[linha][coluna] != '1' && casa[linha][coluna] != '2') {
@@ -140,7 +142,7 @@ int game_sincroniza(void){
   uv_buf_t *b = malloc(sizeof(uv_buf_t));
   b->base = str;
   b->len = sizeof(casa)+2;
-  write_data((uv_stream_t *)&tcp_out,sizeof(casa) + 2,*b,after_write);
+  write_data((uv_stream_t *)tcp_out,sizeof(casa) + 2,*b,after_write);
   free(str);
   return 0;
 }
@@ -158,15 +160,18 @@ typedef struct {
 } write_req_t;
 
 void write_data(uv_stream_t *dest, size_t size, uv_buf_t buf, uv_write_cb callback) {
-    write_req_t *req = (write_req_t*) malloc(sizeof(write_req_t));
-    req->buf = uv_buf_init((char*) malloc(size), size);
-    memcpy(req->buf.base, buf.base, size);
-    uv_write((uv_write_t*) req, (uv_stream_t*)dest, &req->buf, 1, callback);
+    if(dest){
+      write_req_t *req = (write_req_t*) malloc(sizeof(write_req_t));
+      req->buf = uv_buf_init((char*) malloc(size), size);
+      memcpy(req->buf.base, buf.base, size);
+      uv_write((uv_write_t*) req, (uv_stream_t*)dest, &req->buf, 1, callback);
+    }
 }
 
-void on_close(uv_handle_t* handle){
-  //fprintf(stderr,"Conexao fechada!\n");
-  server_conectado = 0;
+void on_close(uv_handle_t* handle) {
+  fprintf(stderr,"Conexao perdida!\n");
+  tcp_conectado = 0;
+  free(handle);
 }
 
 uv_buf_t on_alloc(uv_handle_t* client, size_t suggested_size) {
@@ -226,7 +231,7 @@ void on_read_tcp(uv_stream_t* tcp, ssize_t nread, uv_buf_t buf){
     if (err.code != UV_EOF) {
       UVERR(err, "read");
     }
-    uv_close((uv_handle_t*)&tcp_out, on_close);
+    uv_close((uv_handle_t*)tcp_out, on_close);
     if(buf.base) free(buf.base);
     return;
   }
@@ -237,20 +242,21 @@ static void on_connect_server(uv_connect_t *connect, int status) {
     if (status == -1) {
         return;
     }
-    server_conectado = 1;
+    tcp_conectado = 1;
     uv_timer_start(&tmr_atualiza, atualiza_cb, 200, 200);
-    uv_read_start((uv_stream_t*)&tcp_out, on_alloc, on_read_tcp);
+    uv_read_start((uv_stream_t*)tcp_out, on_alloc, on_read_tcp);
 }
 
 static void faz_conexoes_cb(uv_timer_t* handle, int status){
-  if(!server_conectado){
+  if(!tcp_conectado){
+    tcp_out = malloc(sizeof(*tcp_out));
     char **hostporta = stringsplit(server_host,strlen(server_host),':');
     struct sockaddr_in dest;
     uv_connect_t *conn;
     conn = calloc(1, sizeof(*conn));
-    uv_tcp_init(uv_default_loop(), &tcp_out);
+    uv_tcp_init(uv_default_loop(), tcp_out);
     dest = uv_ip4_addr(hostporta[0], atoi(hostporta[1]));
-    uv_tcp_connect(conn, &tcp_out, dest,
+    uv_tcp_connect(conn, tcp_out, dest,
         on_connect_server);
   }
   return;
@@ -276,22 +282,27 @@ void on_read_stdin(uv_stream_t *stream, ssize_t nread, uv_buf_t buf) {
 }
 
 void on_connect_client(uv_stream_t* server_handle, int status) {
-  int r;
-  CHECK(status, "connect");
+  if(!tcp_conectado){
+    int r;
+    tcp_conectado = 1;
+    CHECK(status, "connect");
 
-  assert((uv_tcp_t*)server_handle == &server);
+    //assert((uv_tcp_t*)server_handle == &server);
 
-  fprintf(stderr,"Alguem conectou\n");
+    fprintf(stderr,"Alguem conectou\n");
 
-  uv_tcp_init(uv_loop, &tcp_out);
+    tcp_out = malloc(sizeof(*tcp_out));
 
-  r = uv_accept(server_handle, (uv_stream_t*)&tcp_out);
-  CHECK(r, "accept");
+    uv_tcp_init(uv_loop, tcp_out);
 
-  memset(casa,'0',sizeof(casa));
-  i = 0;
-  uv_read_start((uv_stream_t*)&tcp_out, on_alloc, on_read_tcp);
-  uv_timer_start(&tmr_atualiza, atualiza_cb, 200, 200);
+    r = uv_accept(server_handle, (uv_stream_t*)tcp_out);
+    CHECK(r, "accept");
+
+    memset(casa,'0',sizeof(casa));
+    i = 0;
+    uv_read_start((uv_stream_t*)tcp_out, on_alloc, on_read_tcp);
+    uv_timer_start(&tmr_atualiza, atualiza_cb, 200, 200);
+  }
 }
 
 int main(int argc, char **argv){
@@ -312,17 +323,19 @@ int main(int argc, char **argv){
       }
   }
   uv_loop = uv_default_loop();
+  memset(casa,'0',sizeof(casa));
   memset(casa_ant,'1',sizeof(casa_ant));
-  if (mode == SERVER){
+  if (mode == SERVER) {
+    server = malloc(sizeof(*server));
     int r;
-    r = uv_tcp_init(uv_loop, &server);
+    r = uv_tcp_init(uv_loop, server);
     CHECK(r, "bind");
 
     struct sockaddr_in address = uv_ip4_addr("0.0.0.0", porta_local);
 
-    r = uv_tcp_bind(&server, address);
+    r = uv_tcp_bind(server, address);
     CHECK(r, "bind");
-    r = uv_listen((uv_stream_t*)&server, 128, on_connect_client);
+    r = uv_listen((uv_stream_t*)server, 128, on_connect_client);
     CHECK(r, "listen");
   }
 
