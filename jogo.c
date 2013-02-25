@@ -15,19 +15,19 @@
 
 #define UVERR(err, msg) fprintf(stderr, "%s: %s\n", msg, uv_strerror(err))
 #define LOG(msg) puts(msg);
-#define LOGF(fmt, params...) printf(fmt "\n", params);
+#define LOGF(fmt, params...) fprintf(stderr,fmt "\n", params);
 #define LOG_ERROR(msg) puts(msg);
 
 #define SERVER 1
 #define CLIENT 0
 
-uv_tcp_t server_me, client, server;
+uv_tcp_t server, tcp_out;
 uv_timer_t tmr_atualiza;
 uv_timer_t tmr_conexoes;
 char server_host[17];
 uv_loop_t *uv_loop = NULL;
 int mode = SERVER;
-uv_pipe_t stdin_pipe, stdout_pipe;
+uv_pipe_t stdin_pipe;
 int porta_local = 8000;
 char server_conectado = 0;
 
@@ -37,38 +37,37 @@ void write_data(uv_stream_t *dest, size_t size, uv_buf_t buf, uv_write_cb callba
 static void after_write(uv_write_t* req, int status);
 
 void game_limpa(void) {
-  printf("\e[H\e[2J");
-  //system("clear");
+  fprintf(stderr,"\e[H\e[2J");
 }
 
 void game_draw(int x, int y) {
-  if (casa[x][y] == '{FONTE}') printf(" ");
-  if (casa[x][y] == '1') printf("X");
-  if (casa[x][y] == '2') printf("O");
+  if (casa[x][y] == '0') fprintf(stderr," ");
+  if (casa[x][y] == '1') fprintf(stderr,"X");
+  if (casa[x][y] == '2') fprintf(stderr,"O");
 }
 
 void game_jogo(void) {
   if(memcmp(casa,casa_ant,sizeof(casa))){
     memcpy(casa_ant,casa,sizeof(casa));
     game_limpa();
-    printf("  1   2   3\n");
-    printf("1 ");
+    fprintf(stderr,"  1   2   3\n");
+    fprintf(stderr,"1 ");
     game_draw(0,0);
-    printf(" | ");
+    fprintf(stderr," | ");
     game_draw(0,1);
-    printf(" | ");
+    fprintf(stderr," | ");
     game_draw(0,2);
-    printf("\n ---+---+---\n2 ");
+    fprintf(stderr,"\n ---+---+---\n2 ");
     game_draw(1,0);
-    printf(" | ");
+    fprintf(stderr," | ");
     game_draw(1,1);
-    printf(" | ");
+    fprintf(stderr," | ");
     game_draw(1,2);
-    printf("\n ---+---+---\n3 ");
+    fprintf(stderr,"\n ---+---+---\n3 ");
     game_draw(2,0);
-    printf(" | ");
+    fprintf(stderr," | ");
     game_draw(2,1);
-    printf(" | ");
+    fprintf(stderr," | ");
     game_draw(2,2);
     if ((i%2) == 0){
       if (mode == SERVER){
@@ -121,14 +120,15 @@ int game_play(char *string){
   linha = string[0] - '1';
   coluna = string[2] - '1';
   if (casa[linha][coluna] != '1' && casa[linha][coluna] != '2') {
-      casa[linha][coluna] = mode;
+      casa[linha][coluna] = mode + '1';
       i++;
+      game_check();
     }
-    else {
-      printf("A casa esta em uso! Jogue Novamente..\n");
-      sleep(2);
-      game_jogo();
-    }
+  else {
+    fprintf(stderr,"A casa esta em uso! Jogue Novamente..\n");
+    sleep(2);
+    game_jogo();
+  }
   return 0;
 }
 
@@ -140,10 +140,7 @@ int game_sincroniza(void){
   uv_buf_t *b = malloc(sizeof(uv_buf_t));
   b->base = str;
   b->len = sizeof(casa)+2;
-  if(mode == CLIENT)
-    write_data((uv_stream_t *)&server,sizeof(casa),*b,after_write);
-  else
-    write_data((uv_stream_t *)&client,sizeof(casa),*b,after_write);
+  write_data((uv_stream_t *)&tcp_out,sizeof(casa) + 2,*b,after_write);
   free(str);
   return 0;
 }
@@ -160,20 +157,6 @@ typedef struct {
     uv_buf_t buf;
 } write_req_t;
 
-void free_write_req(uv_write_t *req) {
-    write_req_t *wr = (write_req_t*) req;
-    free(wr->buf.base);
-    free(wr);
-}
-
-void on_stdout_write(uv_write_t *req, int status) {
-    free_write_req(req);
-}
-
-void on_file_write(uv_write_t *req, int status) {
-    free_write_req(req);
-}
-
 void write_data(uv_stream_t *dest, size_t size, uv_buf_t buf, uv_write_cb callback) {
     write_req_t *req = (write_req_t*) malloc(sizeof(write_req_t));
     req->buf = uv_buf_init((char*) malloc(size), size);
@@ -181,8 +164,9 @@ void write_data(uv_stream_t *dest, size_t size, uv_buf_t buf, uv_write_cb callba
     uv_write((uv_write_t*) req, (uv_stream_t*)dest, &req->buf, 1, callback);
 }
 
-void on_close_client(uv_handle_t* handle) {
-  fprintf(stderr,"Cliente foi embora\n");
+void on_close(uv_handle_t* handle){
+  //fprintf(stderr,"Conexao fechada!\n");
+  server_conectado = 0;
 }
 
 uv_buf_t on_alloc(uv_handle_t* client, size_t suggested_size) {
@@ -194,21 +178,24 @@ uv_buf_t on_alloc(uv_handle_t* client, size_t suggested_size) {
 
 static void after_write(uv_write_t* req, int status) {
   CHECK(status, "write");
-  free(req);
+  write_req_t *wr = (write_req_t*) req;
+  free(wr->buf.base);
+  free(wr);
 }
 
-
 static void atualiza_cb(uv_timer_t* handle, int status){
-  if (i > 9){
-    game_jogo();
-    if (win == 1 || win == 2) printf("\nJogador %d venceu o jogo!\n",win);
-    else printf("\nEmpate!\n");
+  game_jogo();
+  if (i >= 9 || win){
+    if (win == 1 || win == 2) {
+      fprintf(stderr,"\nVoce %s o jogo!\n",win == (mode + 1) ? "venceu" : "perdeu");
+    }
+    else fprintf(stderr,"\nEmpate!\n");
     memset(casa,'0',sizeof(casa));
     i = 0;
-    sleep(5);
+    win = 0;
+    uv_timer_stop(&tmr_atualiza);
+    uv_timer_start(&tmr_atualiza, atualiza_cb, 5000, 200);
   }
-  //game_sincroniza();
-  game_jogo();
   return;
 }
 
@@ -233,22 +220,17 @@ static char ** stringsplit(char *buf, int sz, char ch) {
     return res;
 }
 
-void on_close_server(uv_handle_t* handle){
-  fprintf(stderr,"Servidor caiu\n");
-}
-
-void on_read_server(uv_stream_t* tcp, ssize_t nread, uv_buf_t buf){
+void on_read_tcp(uv_stream_t* tcp, ssize_t nread, uv_buf_t buf){
     if(nread < 0) {
     uv_err_t err = uv_last_error(uv_loop);
     if (err.code != UV_EOF) {
       UVERR(err, "read");
     }
-    uv_close((uv_handle_t*)&server, on_close_server);
+    uv_close((uv_handle_t*)&tcp_out, on_close);
     if(buf.base) free(buf.base);
     return;
   }
   game_update(buf.base);
-  fprintf(stderr,"Li: %s\n",buf.base);
 }
 
 static void on_connect_server(uv_connect_t *connect, int status) {
@@ -257,7 +239,7 @@ static void on_connect_server(uv_connect_t *connect, int status) {
     }
     server_conectado = 1;
     uv_timer_start(&tmr_atualiza, atualiza_cb, 200, 200);
-    uv_read_start((uv_stream_t*)&server, on_alloc, on_read_server);
+    uv_read_start((uv_stream_t*)&tcp_out, on_alloc, on_read_tcp);
 }
 
 static void faz_conexoes_cb(uv_timer_t* handle, int status){
@@ -266,9 +248,9 @@ static void faz_conexoes_cb(uv_timer_t* handle, int status){
     struct sockaddr_in dest;
     uv_connect_t *conn;
     conn = calloc(1, sizeof(*conn));
-    uv_tcp_init(uv_default_loop(), &server);
+    uv_tcp_init(uv_default_loop(), &tcp_out);
     dest = uv_ip4_addr(hostporta[0], atoi(hostporta[1]));
-    uv_tcp_connect(conn, &server, dest,
+    uv_tcp_connect(conn, &tcp_out, dest,
         on_connect_server);
   }
   return;
@@ -278,11 +260,11 @@ void on_read_stdin(uv_stream_t *stream, ssize_t nread, uv_buf_t buf) {
     if (nread == -1) {
         if (uv_last_error(uv_loop).code == UV_EOF) {
             uv_close((uv_handle_t*)&stdin_pipe, NULL);
-            uv_close((uv_handle_t*)&stdout_pipe, NULL);
         }
     }
     else {
         if (nread > 0){
+            buf.base[nread] = '\0';
             if (!waitn_user){
               game_play(buf.base);
               game_sincroniza();
@@ -293,40 +275,26 @@ void on_read_stdin(uv_stream_t *stream, ssize_t nread, uv_buf_t buf) {
         free(buf.base);
 }
 
-void on_read_client(uv_stream_t* tcp, ssize_t nread, uv_buf_t buf) {
-  if(nread < 0) {
-    uv_err_t err = uv_last_error(uv_loop);
-    if (err.code != UV_EOF) {
-      UVERR(err, "read");
-    }
-    uv_close((uv_handle_t*)&client, on_close_client);
-    if(buf.base) free(buf.base);
-    return;
-  }
-  game_update(buf.base);
-  fprintf(stderr,"Li: %s\n",buf.base);
-}
-
 void on_connect_client(uv_stream_t* server_handle, int status) {
   int r;
   CHECK(status, "connect");
 
-  assert((uv_tcp_t*)server_handle == &server_me);
+  assert((uv_tcp_t*)server_handle == &server);
 
   fprintf(stderr,"Alguem conectou\n");
 
-  uv_tcp_init(uv_loop, &client);
+  uv_tcp_init(uv_loop, &tcp_out);
 
-  r = uv_accept(server_handle, (uv_stream_t*)&client);
+  r = uv_accept(server_handle, (uv_stream_t*)&tcp_out);
   CHECK(r, "accept");
 
-  uv_read_start((uv_stream_t*)&client, on_alloc, on_read_client);
+  memset(casa,'0',sizeof(casa));
+  i = 0;
+  uv_read_start((uv_stream_t*)&tcp_out, on_alloc, on_read_tcp);
   uv_timer_start(&tmr_atualiza, atualiza_cb, 200, 200);
 }
 
 int main(int argc, char **argv){
-  int r;
-
   for(;;) {
       int c;
       int option_index = 0;
@@ -339,37 +307,36 @@ int main(int argc, char **argv){
       if(c == -1) break;
       if(c == 'p') porta_local = atoi(optarg);
       if(c == 's') {
-        strcpy(server_host,optarg);//configura_masters(optarg);
+        strcpy(server_host,optarg);
         mode = CLIENT;
       }
   }
   uv_loop = uv_default_loop();
   memset(casa_ant,'1',sizeof(casa_ant));
-  r = uv_tcp_init(uv_loop, &server_me);
-  CHECK(r, "bind");
+  if (mode == SERVER){
+    int r;
+    r = uv_tcp_init(uv_loop, &server);
+    CHECK(r, "bind");
 
-  struct sockaddr_in address = uv_ip4_addr("0.0.0.0", porta_local);
+    struct sockaddr_in address = uv_ip4_addr("0.0.0.0", porta_local);
 
-  r = uv_tcp_bind(&server_me, address);
-  CHECK(r, "bind");
-  r = uv_listen((uv_stream_t*)&server_me, 128, on_connect_client);
-  CHECK(r, "listen");
-  //LOG("listening on port");
+    r = uv_tcp_bind(&server, address);
+    CHECK(r, "bind");
+    r = uv_listen((uv_stream_t*)&server, 128, on_connect_client);
+    CHECK(r, "listen");
+  }
 
   uv_pipe_init(uv_loop, &stdin_pipe, 0);
   uv_pipe_open(&stdin_pipe, 0);
-  uv_pipe_init(uv_loop, &stdout_pipe, 0);
-  uv_pipe_open(&stdout_pipe, 1);
 
   uv_read_start((uv_stream_t*)&stdin_pipe, on_alloc, on_read_stdin);
 
   uv_timer_init(uv_default_loop(), &tmr_atualiza);
-  //uv_timer_start(&tmr_atualiza, atualiza_cb, 200, 200);
   uv_timer_init(uv_default_loop(), &tmr_conexoes);
   if(mode == CLIENT)
-    uv_timer_start(&tmr_conexoes, faz_conexoes_cb, 1000, 1000);
+    uv_timer_start(&tmr_conexoes, faz_conexoes_cb, 0, 1000);
 
-  fprintf(stderr,"Aguardando cliente...\n");
+  fprintf(stderr,"Aguardando %s...\n",mode == CLIENT ? "servidor" : "cliente");
 
   uv_run(uv_loop,UV_RUN_DEFAULT);
   return 0;
