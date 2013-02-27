@@ -32,6 +32,7 @@ int porta_local = 8000;
 char tcp_conectado = 0;
 
 char win,casa[3][3], casa_ant[3][3],i, waitn_user;
+int ponto_meu = 0, ponto_advrs = 0;
 
 void write_data(uv_stream_t *dest, size_t size, uv_buf_t buf, uv_write_cb callback);
 static void after_write(uv_write_t* req, int status);
@@ -50,6 +51,7 @@ void game_jogo(void) {
   if(memcmp(casa,casa_ant,sizeof(casa))){
     memcpy(casa_ant,casa,sizeof(casa));
     game_limpa();
+    fprintf(stderr,"PLACAR: Voce %d X Adversario %d\n\n",ponto_meu,ponto_advrs);
     fprintf(stderr,"  1   2   3\n");
     fprintf(stderr,"1 ");
     game_draw(0,0);
@@ -170,6 +172,7 @@ void write_data(uv_stream_t *dest, size_t size, uv_buf_t buf, uv_write_cb callba
 
 void on_close(uv_handle_t* handle) {
   fprintf(stderr,"Conexao perdida com %s. Aguardando reconectar...!\n",mode == SERVER ? "cliente" : "servidor");
+  ponto_meu = ponto_advrs = 0;
   tcp_conectado = 0;
   free(handle);
 }
@@ -193,6 +196,10 @@ static void atualiza_cb(uv_timer_t* handle, int status){
   if (i >= 9 || win){
     if (win == 1 || win == 2) {
       fprintf(stderr,"\nVoce %s o jogo!\n",win == (mode + 1) ? "venceu" : "perdeu");
+      if(win == (mode + 1))
+        ponto_meu++;
+      else
+        ponto_advrs++;
     }
     else fprintf(stderr,"\nEmpate!\n");
     memset(casa,'0',sizeof(casa));
@@ -243,6 +250,8 @@ static void on_connect_server(uv_connect_t *connect, int status) {
         return;
     }
     fprintf(stderr,"Servidor conectou!\n");
+    memset(casa,'0',sizeof(casa_ant));
+    memset(casa_ant,'1',sizeof(casa));
     tcp_conectado = 1;
     uv_timer_start(&tmr_atualiza, atualiza_cb, 200, 200);
     uv_read_start((uv_stream_t*)tcp_out, on_alloc, on_read_tcp);
@@ -298,6 +307,7 @@ void on_connect_client(uv_stream_t* server_handle, int status) {
     CHECK(r, "accept");
 
     memset(casa,'0',sizeof(casa));
+    memset(casa_ant,'1',sizeof(casa_ant));
     i = 0;
     uv_read_start((uv_stream_t*)tcp_out, on_alloc, on_read_tcp);
     uv_timer_start(&tmr_atualiza, atualiza_cb, 200, 200);
