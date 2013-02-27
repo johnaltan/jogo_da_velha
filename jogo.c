@@ -169,7 +169,7 @@ void write_data(uv_stream_t *dest, size_t size, uv_buf_t buf, uv_write_cb callba
 }
 
 void on_close(uv_handle_t* handle) {
-  fprintf(stderr,"Conexao perdida!\n");
+  fprintf(stderr,"Conexao perdida com %s. Aguardando reconectar...!\n",mode == SERVER ? "cliente" : "servidor");
   tcp_conectado = 0;
   free(handle);
 }
@@ -242,6 +242,7 @@ static void on_connect_server(uv_connect_t *connect, int status) {
     if (status == -1) {
         return;
     }
+    fprintf(stderr,"Servidor conectou!\n");
     tcp_conectado = 1;
     uv_timer_start(&tmr_atualiza, atualiza_cb, 200, 200);
     uv_read_start((uv_stream_t*)tcp_out, on_alloc, on_read_tcp);
@@ -287,9 +288,7 @@ void on_connect_client(uv_stream_t* server_handle, int status) {
     tcp_conectado = 1;
     CHECK(status, "connect");
 
-    //assert((uv_tcp_t*)server_handle == &server);
-
-    fprintf(stderr,"Alguem conectou\n");
+    fprintf(stderr,"Cliente conectou\n");
 
     tcp_out = malloc(sizeof(*tcp_out));
 
