@@ -203,7 +203,7 @@ static void atualiza_cb(uv_timer_t* handle, int status){
     }
     else fprintf(stderr,"\nEmpate!\n");
     memset(casa,'0',sizeof(casa));
-    i = 0;
+    i = (i % 2) ? 1 : 0;
     win = 0;
     uv_timer_stop(&tmr_atualiza);
     uv_timer_start(&tmr_atualiza, atualiza_cb, 5000, 200);
