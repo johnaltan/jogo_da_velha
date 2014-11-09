@@ -31,7 +31,7 @@ uv_pipe_t stdin_pipe;
 int porta_local = 8000;
 char tcp_conectado = 0;
 
-char win,casa[3][3], casa_ant[3][3],i, waitn_user;
+char win,casa[3][3], casa_ant[3][3],i, i_inicial,waitn_user;
 int ponto_meu = 0, ponto_advrs = 0;
 
 void write_data(uv_stream_t *dest, size_t size, uv_buf_t buf, uv_write_cb callback);
@@ -193,7 +193,7 @@ static void after_write(uv_write_t* req, int status) {
 
 static void atualiza_cb(uv_timer_t* handle, int status){
   game_jogo();
-  if (i >= 9 || win){
+  if (i >= (9 + i_inicial) || win){
     if (win == 1 || win == 2) {
       fprintf(stderr,"\nVoce %s o jogo!\n",win == (mode + 1) ? "venceu" : "perdeu");
       if(win == (mode + 1))
@@ -204,6 +204,7 @@ static void atualiza_cb(uv_timer_t* handle, int status){
     else fprintf(stderr,"\nEmpate!\n");
     memset(casa,'0',sizeof(casa));
     i = (i % 2) ? 1 : 0;
+    i_inicial = i;
     win = 0;
     uv_timer_stop(&tmr_atualiza);
     uv_timer_start(&tmr_atualiza, atualiza_cb, 5000, 200);
